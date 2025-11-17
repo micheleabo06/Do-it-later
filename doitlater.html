@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Read-It-Later Link Saver</title>
+    <!-- 1. Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                },
+            }
+        }
+    </script>
+    <!-- 2. Set Inter font -->
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Simple loading spinner */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, .1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #09f;
+            animation: spin 1s ease infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="h-full flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+
+<div class="max-w-2xl w-full space-y-8 p-10 bg-white shadow-2xl rounded-2xl">
+    <div>
+        <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            Read-It-Later
+        </h2>
+        <p class="mt-2 text-center text-sm text-gray-600">
+            Save links to read, watch, or browse later.
+        </p>
+    </div>
+
+    <!-- Authentication Status -->
+    <div id="auth-status" class="text-center p-3 bg-gray-100 rounded-lg">
+        <p class="text-sm font-medium text-gray-700">Connecting to database...</p>
+    </div>
+
+    <!-- Add Link Form -->
+    <div class="rounded-md shadow-sm -space-y-px">
+        <div>
+            <label for="url-input" class="sr-only">URL</label>
+            <input id="url-input" name="url" type="url" required
+                   class="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                   placeholder="https::/your-link.com">
+        </div>
+    </div>
+
+    <div>
+        <button id="save-button"
+                class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
+            <span id="button-text">Save Link</span>
+            <div id="button-spinner" class="spinner w-5 h-5 hidden"></div>
+        </button>
+    </div>
+
+    <!-- Message Area -->
+    <div id="message-area" class="text-center text-sm"></div>
+
+    <!-- Link List -->
+    <div class="border-t border-gray-200 pt-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Your Saved Links</h3>
+        <div id="link-list" class="space-y-4">
+            <!-- Links will be injected here -->
+            <p id="empty-state" class="text-gray-500 text-sm">Your list is empty. Add a link above to get started!</p>
+        </div>
+    </div>
+</div>
+
+<!-- Link Item Template (for cloning) -->
+<template id="link-item-template">
+    <div class="link-item p-4 bg-gray-50 rounded-lg shadow-sm flex items-center justify-between">
+        <a class="link-url text-indigo-600 hover:text-indigo-800 font-medium truncate" href="#" target="_blank" rel="noopener noreferrer"></a>
+        <div class="flex space-x-2 ml-4 flex-shrink-0">
+            <button class="mark-read-button p-2 text-sm font-medium text-green-600 hover:text-green-800 bg-green-100 rounded-md">Mark as Read</button>
+            <button class="delete-button p-2 text-sm font-medium text-red-600 hover:text-red-800 bg-red-100 rounded-md">Delete</button>
+        </div>
+    </div>
+</template>
+
+
+<!-- 3. Load Firebase SDKs -->
+<script type="module">
+    // Import Firebase modules
+    import { initializeApp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import {
+        getFirestore,
+        doc,
+        collection,
+        addDoc,
+        onSnapshot,
+        deleteDoc,
+        updateDoc,
+        serverTimestamp,
+        query
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    // Import Analytics
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
+
+    // --- Firebase Configuration ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyA5WSRocZzuRreJcFhUNGY1SLw1KxmCPkM",
+        authDomain: "doitlater-1a0ad.firebaseapp.com",
+        projectId: "doitlater-1a0ad",
+        storageBucket: "doitlater-1a0ad.firebasestorage.app",
+        messagingSenderId: "1711808690",
+        appId: "1:1711808690:web:396cf31c9d7d13e9cae9ab",
+        measurementId: "G-TR4NC6E448"
+    };
+
+    // This appId is used in the database path. 'my-local-app' is fine for testing.
+    const appId = 'my-local-app';
+
+    // We will use signInAnonymously() now, so this token is not needed.
+    const initialAuthToken = null;
+
+    // --- App State ---
+    let app, auth, db;
+    let userId = null;
+    let linksCollection = null;
+
+    // --- DOM Elements ---
+    const urlInput = document.getElementById('url-input');
+    const saveButton = document.getElementById('save-button');
+    const buttonText = document.getElementById('button-text');
+    const buttonSpinner = document.getElementById('button-spinner');
+    const linkList = document.getElementById('link-list');
+    const emptyState = document.getElementById('empty-state');
+    const template = document.getElementById('link-item-template');
+    const messageArea = document.getElementById('message-area');
+    const authStatus = document.getElementById('auth-status');
+
+    // --- Helper Functions ---
+
+    /**
+     * Shows a message to the user.
+     * @param {string} text The message to display.
+     * @param {boolean} isError Whether the message is an error.
+     */
+    function showMessage(text, isError = false) {
+        messageArea.textContent = text;
+        messageArea.className = isError ? 'text-red-600' : 'text-green-600';
+        // Clear message after 3 seconds
+        setTimeout(() => {
+            messageArea.textContent = '';
+        }, 3000);
+    }
+
+    /**
+     * Toggles the loading state of the save button.
+     * @param {boolean} isLoading Whether to show the loading state.
+     */
+    function setLoading(isLoading) {
+        if (isLoading) {
+            saveButton.disabled = true;
+            buttonText.classList.add('hidden');
+            buttonSpinner.classList.remove('hidden');
+        } else {
+            saveButton.disabled = false;
+            buttonText.classList.remove('hidden');
+            buttonSpinner.classList.add('hidden');
+        }
+    }
+
+    /**
+     * Renders a single link document to the DOM.
+     * @param {object} doc A Firestore document snapshot.
+     */
+    function renderLink(doc) {
+        const data = doc.data();
+        const id = doc.id;
+
+        const clone = template.content.cloneNode(true);
+        const linkItem = clone.querySelector('.link-item');
+        const linkUrl = clone.querySelector('.link-url');
+        const markReadButton = clone.querySelector('.mark-read-button');
+        const deleteButton = clone.querySelector('.delete-button');
+
+        linkUrl.href = data.url;
+        linkUrl.textContent = data.title; // Use the title (or URL)
+
+        // Style for read/unread
+        if (data.isRead) {
+            linkItem.classList.add('opacity-60');
+            linkUrl.classList.add('line-through');
+            markReadButton.textContent = 'Mark Unread';
+            markReadButton.classList.remove('text-green-600', 'bg-green-100', 'hover:text-green-800');
+            markReadButton.classList.add('text-gray-600', 'bg-gray-100', 'hover:text-gray-800');
+        }
+
+        // --- Attach Event Listeners ---
+        markReadButton.addEventListener('click', () => {
+            handleMarkRead(id, data.isRead);
+        });
+
+        deleteButton.addEventListener('click', () => {
+            handleDelete(id);
+        });
+
+        linkList.appendChild(clone);
+    }
+
+    // --- Firestore API Calls ---
+
+    /**
+     * Fetches all links in real-time and renders them.
+     */
+    function fetchLinks() {
+        if (!linksCollection) return;
+
+        // Use onSnapshot for real-time updates
+        const q = query(linksCollection);
+        onSnapshot(q, (querySnapshot) => {
+            // Clear the current list
+            linkList.innerHTML = '';
+
+            if (querySnapshot.empty) {
+                linkList.appendChild(emptyState);
+            } else {
+                querySnapshot.forEach((doc) => {
+                    renderLink(doc);
+                });
+            }
+        }, (error) => {
+            console.error("Error fetching links: ", error);
+            showMessage("Could not fetch links. Please refresh.", true);
+        });
+    }
+
+    /**
+     * Handles the "Add Link" button click.
+     */
+    async function handleAddLink() {
+        const url = urlInput.value.trim();
+        if (!url) {
+            showMessage("Please enter a URL.", true);
+            return;
+        }
+        // Basic URL validation
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+             showMessage("Please enter a valid URL (starting with http:// or https://).", true);
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            // This is the "stretch goal" simplified.
+            // We just use the URL as the title.
+            // A more advanced version would fetch the page title.
+            const newLink = {
+                url: url,
+                title: url, // Using URL as title for simplicity
+                isRead: false,
+                addedAt: serverTimestamp() // Uses the server's time
+            };
+
+            await addDoc(linksCollection, newLink);
+            showMessage("Link saved successfully!", false);
+            urlInput.value = ''; // Clear input
+
+        } catch (error) {
+            console.error("Error adding document: ", error);
+            showMessage("Failed to save link. Please try again.", true);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    /**
+     * Marks a link as read or unread.
+     * @param {string} id The document ID.
+     * @param {boolean} currentIsRead The current read status.
+     */
+    async function handleMarkRead(id, currentIsRead) {
+        const docRef = doc(db, linksCollection, id);
+        try {
+            await updateDoc(docRef, {
+                isRead: !currentIsRead
+            });
+        } catch (error) {
+            console.error("Error updating document: ", error);
+            showMessage("Failed to update link.", true);
+        }
+    }
+
+    /**
+     * Deletes a link from Firestore.
+     * @param {string} id The document ID.
+     */
+    async function handleDelete(id) {
+        // We can add a custom confirmation modal here if needed,
+        // but for now, we'll delete directly.
+        const docRef = doc(db, linksCollection, id);
+        try {
+            await deleteDoc(docRef);
+            // The onSnapshot listener will automatically re-render the list
+        } catch (error) {
+            console.error("Error deleting document: ", error);
+            showMessage("Failed to delete link.", true);
+        }
+    }
+
+
+    // --- Initialization ---
+
+    /**
+     * Main function to initialize the app.
+     */
+    async function main() {
+        try {
+            // 1. Initialize Firebase
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            getAnalytics(app); // Initialize Analytics
+            setLogLevel('Debug'); // Enable Firebase logging in console
+
+            // 2. Set up Auth listener
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    // User is signed in
+                    userId = user.uid;
+                    authStatus.innerHTML = `<p class="text-sm font-medium text-green-700">Database Connected</p>`;
+
+                    // Define the user's private collection path
+                    const collectionPath = `artifacts/${appId}/users/${userId}/links`;
+                    linksCollection = collection(db, collectionPath);
+
+                    // 3. Fetch initial data
+                    fetchLinks();
+
+                    // 4. Enable the save button
+                    saveButton.disabled = false;
+
+                } else {
+                    // User is signed out
+                    userId = null;
+                    linksCollection = null;
+                    authStatus.innerHTML = `<p class="text-sm font-medium text-red-700">Database Disconnected. Please refresh.</p>`;
+                    saveButton.disabled = true;
+                }
+            });
+
+            // 3. Sign in the user
+            if (initialAuthToken) {
+                await signInWithCustomToken(auth, initialAuthToken);
+            } else {
+                // This will now run, as it doesn't depend on a special token.
+                await signInAnonymously(auth);
+            }
+
+            // 4. Add main event listener
+            saveButton.addEventListener('click', handleAddLink);
+
+        } catch (error) {
+            console.error("App initialization error:", error);
+            authStatus.innerHTML = `<p class="text-sm font-medium text-red-700">App failed to load. Check console.</p>`;
+        }
+    }
+
+    // Start the app
+    main();
+
+</script>
+</body>
+</html>
