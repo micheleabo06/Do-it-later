@@ -112,10 +112,10 @@
         serverTimestamp,
         query
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    // Import Analytics
+    //Import Analytics
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
 
-    // --- Firebase Configuration ---
+    //Firebase Configuration 
     const firebaseConfig = {
         apiKey: "AIzaSyA5WSRocZzuRreJcFhUNGY1SLw1KxmCPkM",
         authDomain: "doitlater-1a0ad.firebaseapp.com",
@@ -129,15 +129,15 @@
     // This appId is used in the database path. 'my-local-app' is fine for testing.
     const appId = 'my-local-app';
 
-    // We will use signInAnonymously() now, so this token is not needed.
+    // Can also use signInAnonymously()
     const initialAuthToken = null;
 
-    // --- App State ---
+    //  App State 
     let app, auth, db;
     let userId = null;
     let linksCollection = null;
 
-    // --- DOM Elements ---
+    // DOM Elements - to not make it static
     const urlInput = document.getElementById('url-input');
     const saveButton = document.getElementById('save-button');
     const buttonText = document.getElementById('button-text');
@@ -148,13 +148,9 @@
     const messageArea = document.getElementById('message-area');
     const authStatus = document.getElementById('auth-status');
 
-    // --- Helper Functions ---
+    // Helper Functions 
 
-    /**
-     * Shows a message to the user.
-     * @param {string} text The message to display.
-     * @param {boolean} isError Whether the message is an error.
-     */
+    //Shows a message to the user.
     function showMessage(text, isError = false) {
         messageArea.textContent = text;
         messageArea.className = isError ? 'text-red-600' : 'text-green-600';
@@ -164,10 +160,9 @@
         }, 3000);
     }
 
-    /**
-     * Toggles the loading state of the save button.
-     * @param {boolean} isLoading Whether to show the loading state.
-     */
+    
+    //Toggles the loading state of the save button.
+    
     function setLoading(isLoading) {
         if (isLoading) {
             saveButton.disabled = true;
@@ -180,10 +175,8 @@
         }
     }
 
-    /**
-     * Renders a single link document to the DOM.
-     * @param {object} doc A Firestore document snapshot.
-     */
+    // Renders a single link document to the DOM.
+  
     function renderLink(doc) {
         const data = doc.data();
         const id = doc.id;
@@ -206,7 +199,7 @@
             markReadButton.classList.add('text-gray-600', 'bg-gray-100', 'hover:text-gray-800');
         }
 
-        // --- Attach Event Listeners ---
+        // Attach Event Listeners 
         markReadButton.addEventListener('click', () => {
             handleMarkRead(id, data.isRead);
         });
@@ -218,11 +211,10 @@
         linkList.appendChild(clone);
     }
 
-    // --- Firestore API Calls ---
+    //FIRESTORE API CALLS - first time using API 
 
-    /**
-     * Fetches all links in real-time and renders them.
-     */
+    //Fetches all links in real-time and renders them.
+     
     function fetchLinks() {
         if (!linksCollection) return;
 
@@ -244,10 +236,8 @@
             showMessage("Could not fetch links. Please refresh.", true);
         });
     }
-
-    /**
-     * Handles the "Add Link" button click.
-     */
+    
+     //Handles the "Add Link" button click.
     async function handleAddLink() {
         const url = urlInput.value.trim();
         if (!url) {
@@ -285,11 +275,8 @@
         }
     }
 
-    /**
-     * Marks a link as read or unread.
-     * @param {string} id The document ID.
-     * @param {boolean} currentIsRead The current read status.
-     */
+    //Marks a link as read or unread.
+
     async function handleMarkRead(id, currentIsRead) {
         const docRef = doc(db, linksCollection, id);
         try {
@@ -302,13 +289,10 @@
         }
     }
 
-    /**
-     * Deletes a link from Firestore.
-     * @param {string} id The document ID.
-     */
-    async function handleDelete(id) {
-        // We can add a custom confirmation modal here if needed,
-        // but for now, we'll delete directly.
+    //Deletes a link from Firestore.
+    
+    async function handleDelete(id) {   
+        //Delete directly.
         const docRef = doc(db, linksCollection, id);
         try {
             await deleteDoc(docRef);
@@ -320,35 +304,34 @@
     }
 
 
-    // --- Initialization ---
-
-    /**
-     * Main function to initialize the app.
-     */
+    //  INITIALISATION
+    
+    //Main function to initialise the app.
+     
     async function main() {
         try {
             // 1. Initialize Firebase
             app = initializeApp(firebaseConfig);
             auth = getAuth(app);
             db = getFirestore(app);
-            getAnalytics(app); // Initialize Analytics
-            setLogLevel('Debug'); // Enable Firebase logging in console
+            getAnalytics(app); //Initialize Analytics
+            setLogLevel('Debug'); //Enable Firebase logging in console
 
             // 2. Set up Auth listener
             onAuthStateChanged(auth, (user) => {
                 if (user) {
-                    // User is signed in
+                    //User is signed in
                     userId = user.uid;
                     authStatus.innerHTML = `<p class="text-sm font-medium text-green-700">Database Connected</p>`;
 
-                    // Define the user's private collection path
+                    //Define the user's private collection path
                     const collectionPath = `artifacts/${appId}/users/${userId}/links`;
                     linksCollection = collection(db, collectionPath);
 
-                    // 3. Fetch initial data
+                    //3. Fetch initial data
                     fetchLinks();
 
-                    // 4. Enable the save button
+                    //4. Enable the save button
                     saveButton.disabled = false;
 
                 } else {
@@ -364,7 +347,7 @@
             if (initialAuthToken) {
                 await signInWithCustomToken(auth, initialAuthToken);
             } else {
-                // This will now run, as it doesn't depend on a special token.
+                //This should still run bc of line 133
                 await signInAnonymously(auth);
             }
 
