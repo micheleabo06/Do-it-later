@@ -277,29 +277,35 @@
 
     //Marks a link as read or unread.
 
+    // Marks a link as read or unread
     async function handleMarkRead(id, currentIsRead) {
-    // remember to provide the full path to the document
-    const docRef = doc(db, `artifacts/${appId}/users/${userId}/links`, id);
-    try {
-        await updateDoc(docRef, {
-            isRead: !currentIsRead
-        });
-        //onSnapshot will update the UI automatically.
+        console.log("Attempting to update link:", id); // Debug log
+        try {
+            // Use backticks (`) for the path string!
+            const docRef = doc(db, `artifacts/${appId}/users/${userId}/links`, id);
+            await updateDoc(docRef, {
+                isRead: !currentIsRead
+            });
+         showMessage("Updated successfully!");
     } catch (error) {
-        console.error("Error updating document: ", error);
+        console.error("Update Error:", error);
         showMessage("Failed to update link.", true);
     }
 }
 
-// delete link
-async function handleDelete(id) {   
-    const docRef = doc(db, `artifacts/${appId}/users/${userId}/links`, id);
-    try {
-        await deleteDoc(docRef);
-        //onSnapshot will update the UI automatically.
-    } catch (error) {
-        console.error("Error deleting document: ", error);
-        showMessage("Failed to delete link.", true);
+// Deletes a link
+    async function handleDelete(id) {
+        console.log("Attempting to delete link:", id); // Debug log
+        if (!confirm("Are you sure you want to delete this link?")) return;
+
+        try {
+        // Use backticks (`) for the path string!
+            const docRef = doc(db, `artifacts/${appId}/users/${userId}/links`, id);
+            await deleteDoc(docRef);
+            showMessage("Deleted successfully!");
+        } catch (error) {
+            console.error("Delete Error:", error);
+            showMessage("Failed to delete link.", true);
     }
 }
 
