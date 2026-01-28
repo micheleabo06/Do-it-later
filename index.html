@@ -96,7 +96,7 @@
 </template>
 
 
-<!-- 3. Load Firebase SDKs -->
+<!-- Load Firebase SDKs -->
 <script type="module">
     // Import Firebase modules
     import { initializeApp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -278,30 +278,30 @@
     //Marks a link as read or unread.
 
     async function handleMarkRead(id, currentIsRead) {
-        const docRef = doc(db, linksCollection, id);
-        try {
-            await updateDoc(docRef, {
-                isRead: !currentIsRead
-            });
-        } catch (error) {
-            console.error("Error updating document: ", error);
-            showMessage("Failed to update link.", true);
-        }
+    // remember to provide the full path to the document
+    const docRef = doc(db, `artifacts/${appId}/users/${userId}/links`, id);
+    try {
+        await updateDoc(docRef, {
+            isRead: !currentIsRead
+        });
+        //onSnapshot will update the UI automatically.
+    } catch (error) {
+        console.error("Error updating document: ", error);
+        showMessage("Failed to update link.", true);
     }
+}
 
-    //Deletes a link from Firestore.
-    
-    async function handleDelete(id) {   
-        //Delete directly.
-        const docRef = doc(db, linksCollection, id);
-        try {
-            await deleteDoc(docRef);
-            // The onSnapshot listener will automatically re-render the list
-        } catch (error) {
-            console.error("Error deleting document: ", error);
-            showMessage("Failed to delete link.", true);
-        }
+// delete link
+async function handleDelete(id) {   
+    const docRef = doc(db, `artifacts/${appId}/users/${userId}/links`, id);
+    try {
+        await deleteDoc(docRef);
+        //onSnapshot will update the UI automatically.
+    } catch (error) {
+        console.error("Error deleting document: ", error);
+        showMessage("Failed to delete link.", true);
     }
+}
 
 
     //  INITIALISATION
