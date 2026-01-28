@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Do-It-Later Link Saver</title>
-    <!-- 1. Load Tailwind CSS -->
+    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -17,7 +17,7 @@
             }
         }
     </script>
-    <!-- 2. Set Inter font -->
+    <!-- Set Inter font -->
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     <style>
         body { font-family: 'Inter', sans-serif; }
@@ -310,14 +310,14 @@ async function handleDelete(id) {
      
     async function main() {
         try {
-            // 1. Initialize Firebase
+            // Initialize Firebase
             app = initializeApp(firebaseConfig);
             auth = getAuth(app);
             db = getFirestore(app);
             getAnalytics(app); //Initialize Analytics
             setLogLevel('Debug'); //Enable Firebase logging in console
 
-            // 2. Set up Auth listener
+            // Set up Auth listener
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     //User is signed in
@@ -328,10 +328,10 @@ async function handleDelete(id) {
                     const collectionPath = `artifacts/${appId}/users/${userId}/links`;
                     linksCollection = collection(db, collectionPath);
 
-                    //3. Fetch initial data
+                    // Fetch initial data
                     fetchLinks();
 
-                    //4. Enable the save button
+                    // Enable the save button
                     saveButton.disabled = false;
 
                 } else {
@@ -343,7 +343,7 @@ async function handleDelete(id) {
                 }
             });
 
-            // 3. Sign in the user
+            // Sign in the user
             if (initialAuthToken) {
                 await signInWithCustomToken(auth, initialAuthToken);
             } else {
@@ -351,7 +351,7 @@ async function handleDelete(id) {
                 await signInAnonymously(auth);
             }
 
-            // 4. Add main event listener
+            // Add main event listener
             saveButton.addEventListener('click', handleAddLink);
 
         } catch (error) {
